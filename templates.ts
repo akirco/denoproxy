@@ -14,22 +14,15 @@ const commonStyles = {
     `,
   base: `
     body {
+      padding: 0;
       font-family: -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Helvetica,Arial,sans-serif;
       margin: 0;
-      padding: 20px;
       color: var(--color-text);
       line-height: 1.5;
       background: var(--color-bg);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
-    }
-    .container {
-      width: 100%;
-      max-width: 1000px;
-      margin: 0 auto;
-      padding: 0 16px;
-      box-sizing: border-box;
     }
     @media (max-width: 768px) {
       body {
@@ -123,17 +116,13 @@ export const loginTemplate = `
         ${commonStyles.buttons}
         ${commonStyles.error}
 
-        /* Login specific styles */
         .container {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            max-width: 400px;
-            margin: 0 auto;
+            width: 100%;
+            max-width: 600px;
+            margin:60px auto;
             padding: 0 16px;
-        }
+            box-sizing: border-box;
+          }
         .form {
             width: 100%;
             margin-top: 24px;
@@ -183,8 +172,14 @@ export const homeTemplate = `
         ${commonStyles.buttons}
         ${commonStyles.links}
         ${commonStyles.error}
+        .container {
+            width: 100%;
+            max-width: 1096px;
+            margin:40px auto;
+            padding: 0 16px;
+            box-sizing: border-box;
+        }
 
-        /* Home specific styles */
         .header {
             display: flex;
             justify-content: space-between;
@@ -192,6 +187,14 @@ export const homeTemplate = `
             margin-bottom: 24px;
             flex-wrap: wrap;
             gap: 16px;
+        }
+
+        hr{
+            border: 1px solid var(--color-border);
+            margin: 16px 0;
+            width: 100%;
+            box-sizing: border-box;
+            margin: 0;
         }
         .header h1 {
             margin: 0;
@@ -272,8 +275,11 @@ export const homeTemplate = `
     <div class="container">
         <header class="header">
             <h1>Proxy Routes Management</h1>
+
             <div class="logout"><a href="/logout">Logout</a></div>
         </header>
+
+        <hr />
 
         <form id="addForm" action="/routes/add" method="POST">
             <h3>Add New Route</h3>
