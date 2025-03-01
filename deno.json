@@ -1,0 +1,22 @@
+{
+  "tasks": {
+    "dev": "deno run --watch --unstable-kv --allow-net --allow-env --allow-read=.env,./ main.ts",
+    "start": "deno run --allow-net --allow-env --allow-read main.ts"
+  },
+  "imports": {
+    "@std/assert": "jsr:@std/assert@1",
+    "templates": "./templates.ts"
+  },
+  "deploy": {
+    "project": "denoproxy",
+    "exclude": [
+      "**/node_modules"
+    ],
+    "include": [
+      "templates.ts",
+      "static/**/*",
+      ".env"
+    ],
+    "entrypoint": "main.ts"
+  }
+}
