@@ -1,7 +1,6 @@
 import "jsr:@std/dotenv/load";
 import { homeTemplate, loginTemplate } from "templates";
 
-// user auth
 const ADMIN_USERNAME = Deno.env.get("PROXY_USERNAME") || "admin";
 const ADMIN_PASSWORD = Deno.env.get("PROXY_PASSWORD") || "admin";
 const SESSION_KEY = ["sessions"];
@@ -10,7 +9,6 @@ console.log("USERNAME", ADMIN_USERNAME);
 
 console.log("PASSWORD", ADMIN_PASSWORD);
 
-// proxy structure
 interface ProxyRoute {
   path: string;
   target: string;
@@ -23,7 +21,7 @@ function generateRoutesTable(routes: ProxyRoute[]): string {
   }
 
   // Get server host from environment or use default
-  const serverHost = Deno.env.get("SERVER_HOST") || "http://localhost:8000";
+  const serverHost = Deno.env.get("SERVER_HOST");
 
   return routes
     .map(
@@ -40,7 +38,7 @@ function generateRoutesTable(routes: ProxyRoute[]): string {
                 </form>
             </td>
         </tr>
-    `,
+    `
     )
     .join("");
 }
@@ -87,7 +85,6 @@ const ROUTES_KEY = ["proxyRoutes"];
 Deno.serve(async (req) => {
   const url = new URL(req.url);
 
-  // Update root path to be the admin interface
   if (url.pathname === "/" || url.pathname === "") {
     if (!(await verifySession(req))) {
       return new Response("", {
@@ -101,11 +98,10 @@ Deno.serve(async (req) => {
 
     return new Response(
       homeTemplate.replace("{{routesRows}}", generateRoutesTable(routes)),
-      { headers: { "Content-Type": "text/html" } },
+      { headers: { "Content-Type": "text/html" } }
     );
   }
 
-  // Update login handler to redirect to root
   if (url.pathname === "/login") {
     if (req.method === "GET") {
       return new Response(loginTemplate, {
@@ -134,11 +130,11 @@ Deno.serve(async (req) => {
       return new Response(
         loginTemplate.replace(
           "</form>",
-          '<div class="error">Invalid credentials</div></form>',
+          '<div class="error">Invalid credentials</div></form>'
         ),
         {
           headers: { "Content-Type": "text/html" },
-        },
+        }
       );
     }
   }
@@ -163,12 +159,12 @@ Deno.serve(async (req) => {
           .replace("{{routesRows}}", generateRoutesTable(routes))
           .replace(
             "</form>",
-            `<div class="error">${pathValidation.error}</div></form>`,
+            `<div class="error">${pathValidation.error}</div></form>`
           ),
         {
           status: 400,
           headers: { "Content-Type": "text/html" },
-        },
+        }
       );
     }
 
@@ -181,12 +177,12 @@ Deno.serve(async (req) => {
             .replace("{{routesRows}}", generateRoutesTable(routes))
             .replace(
               "</form>",
-              '<div class="error">Path already exists!</div></form>',
+              '<div class="error">Path already exists!</div></form>'
             ),
           {
             status: 400,
             headers: { "Content-Type": "text/html" },
-          },
+          }
         );
       }
 
@@ -243,12 +239,12 @@ Deno.serve(async (req) => {
           .replace("{{routesRows}}", generateRoutesTable(routes))
           .replace(
             "</form>",
-            `<div class="error">${pathValidation.error}</div></form>`,
+            `<div class="error">${pathValidation.error}</div></form>`
           ),
         {
           status: 400,
           headers: { "Content-Type": "text/html" },
-        },
+        }
       );
     }
 
@@ -267,12 +263,12 @@ Deno.serve(async (req) => {
             .replace("{{routesRows}}", generateRoutesTable(routes))
             .replace(
               "</form>",
-              '<div class="error">Path already exists!</div></form>',
+              '<div class="error">Path already exists!</div></form>'
             ),
           {
             status: 400,
             headers: { "Content-Type": "text/html" },
-          },
+          }
         );
       }
 
@@ -351,7 +347,7 @@ Deno.serve(async (req) => {
     try {
       const finalUrl = new URL(
         remainingPath + url.search,
-        matchingRoute.target,
+        matchingRoute.target
       ).toString();
       console.log("Proxying request to:", finalUrl);
 
@@ -376,6 +372,7 @@ Deno.serve(async (req) => {
       }
 
       const responseHeaders = new Headers();
+      // 测试
       for (const [key, value] of proxyResponse.headers.entries()) {
         if (
           ![
@@ -391,7 +388,7 @@ Deno.serve(async (req) => {
       responseHeaders.set("Access-Control-Allow-Origin", "*");
       responseHeaders.set(
         "Access-Control-Allow-Methods",
-        "GET, POST, PUT, DELETE, OPTIONS",
+        "GET, POST, PUT, DELETE, OPTIONS"
       );
       responseHeaders.set("Access-Control-Allow-Headers", "*");
 
@@ -402,9 +399,8 @@ Deno.serve(async (req) => {
       });
     } catch (error) {
       console.error("Proxy error:", error);
-      const errorMessage = error instanceof Error
-        ? error.message
-        : "Unknown error occurred";
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error occurred";
       return new Response("Failed to proxy request: " + errorMessage, {
         status: 500,
         headers: {
