@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
     //is logged in now
     return new Response(
       homeTemplate.replace("{{routesRows}}", generateRoutesTable(routes)),
-      { headers: { "Content-Type": "text/html" } }
+      { headers: { "Content-Type": "text/html; charset=utf-8" } }
     );
   }
 
@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
   if (url.pathname === "/login") {
     if (req.method === "GET") {
       return new Response(loginTemplate, {
-        headers: { "Content-Type": "text/html" },
+        headers: { "Content-Type": "text/html; charset=utf-8" },
       });
     }
 
@@ -138,7 +138,7 @@ Deno.serve(async (req) => {
           '<div class="error">Invalid credentials</div></form>'
         ),
         {
-          headers: { "Content-Type": "text/html" },
+          headers: { "Content-Type": "text/html; charset=utf-8" },
         }
       );
     }
@@ -168,7 +168,7 @@ Deno.serve(async (req) => {
             ),
           {
             status: 400,
-            headers: { "Content-Type": "text/html" },
+            headers: { "Content-Type": "text/html; charset=utf-8" },
           }
         );
     }
@@ -188,7 +188,7 @@ Deno.serve(async (req) => {
           ),
         {
           status: 400,
-          headers: { "Content-Type": "text/html" },
+          headers: { "Content-Type": "text/html; charset=utf-8" },
         }
       );
     }
@@ -206,7 +206,7 @@ Deno.serve(async (req) => {
             ),
           {
             status: 400,
-            headers: { "Content-Type": "text/html" },
+            headers: { "Content-Type": "text/html; charset=utf-8" },
           }
         );
       }
@@ -271,7 +271,7 @@ Deno.serve(async (req) => {
           ),
         {
           status: 400,
-          headers: { "Content-Type": "text/html" },
+          headers: { "Content-Type": "text/html; charset=utf-8" },
         }
       );
     }
@@ -295,7 +295,7 @@ Deno.serve(async (req) => {
             ),
           {
             status: 400,
-            headers: { "Content-Type": "text/html" },
+            headers: { "Content-Type": "text/html; charset=utf-8" },
           }
         );
       }
@@ -403,18 +403,6 @@ Deno.serve(async (req) => {
       }
 
       const responseHeaders = new Headers();
-      // 测试
-      // for (const [key, value] of proxyResponse.headers.entries()) {
-      //   if (
-      //     ![
-      //       "content-encoding",
-      //       "content-length",
-      //       "content-security-policy",
-      //     ].includes(key.toLowerCase())
-      //   ) {
-      //     responseHeaders.set(key, value);
-      //   }
-      // }
 
       responseHeaders.set("Access-Control-Allow-Origin", "*");
       responseHeaders.set(
@@ -422,6 +410,14 @@ Deno.serve(async (req) => {
         "GET, POST, PUT, DELETE, OPTIONS"
       );
       responseHeaders.set("Access-Control-Allow-Headers", "*");
+
+      // 如果是文本内容，确保设置正确的字符编码
+      const contentType = proxyResponse.headers.get("content-type");
+      if (contentType && contentType.includes("text")) {
+        responseHeaders.set("Content-Type", `${contentType}; charset=utf-8`);
+      } else {
+        responseHeaders.set("Content-Type", contentType || "application/octet-stream");
+      }
 
       return new Response(proxyResponse.body, {
         status: proxyResponse.status,
