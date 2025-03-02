@@ -1,9 +1,11 @@
-import "jsr:@std/dotenv/load";
+import "dotenv/load";
 import { homeTemplate, loginTemplate } from "templates";
 
 const ADMIN_USERNAME = Deno.env.get("PROXY_USERNAME") || "admin";
 const ADMIN_PASSWORD = Deno.env.get("PROXY_PASSWORD") || "admin";
 const SESSION_KEY = ["sessions"];
+
+let SERVER_HOST = Deno.env.get("SERVER_HOST");
 
 console.log("USERNAME", ADMIN_USERNAME);
 
@@ -14,14 +16,12 @@ interface ProxyRoute {
   target: string;
 }
 
-// generate routes table
 function generateRoutesTable(routes: ProxyRoute[]): string {
   if (!routes.length) {
     return '<tr><td colspan="4">No routes configured</td></tr>';
   }
 
-  // Get server host from environment or use default
-  const serverHost = Deno.env.get("SERVER_HOST");
+  const serverHost = SERVER_HOST;
 
   return routes
     .map(
@@ -58,7 +58,6 @@ function getCookie(req: Request, name: string): string | null {
   return match ? match[1] : null;
 }
 
-// Add this function near the top of the file
 function validatePath(path: string): { valid: boolean; error?: string } {
   if (!path.startsWith("/")) {
     return { valid: false, error: "Path must start with /" };
@@ -78,12 +77,14 @@ function validatePath(path: string): { valid: boolean; error?: string } {
   return { valid: true };
 }
 
-// 打开 Deno KV（全局只需打开一次）
 const kv = await Deno.openKv();
-const ROUTES_KEY = ["proxyRoutes"];
+
+const ROUTES_KEY = ["ProxyRoutes"];
 
 Deno.serve(async (req) => {
   const url = new URL(req.url);
+  SERVER_HOST = url.origin;
+
 
   if (url.pathname === "/" || url.pathname === "") {
     if (!(await verifySession(req))) {
@@ -95,13 +96,14 @@ Deno.serve(async (req) => {
 
     const result = await kv.get<ProxyRoute[]>(ROUTES_KEY);
     const routes: ProxyRoute[] = result.value || [];
-
+    //is logged in now
     return new Response(
       homeTemplate.replace("{{routesRows}}", generateRoutesTable(routes)),
       { headers: { "Content-Type": "text/html" } }
     );
   }
 
+  /* ------------------------------ handle login ------------------------------ */
   if (url.pathname === "/login") {
     if (req.method === "GET") {
       return new Response(loginTemplate, {
@@ -114,10 +116,13 @@ Deno.serve(async (req) => {
       const username = formData.get("username");
       const password = formData.get("password");
       if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+
         const sessionId = crypto.randomUUID();
+
         await kv.set([...SESSION_KEY, sessionId], true, {
           expireIn: 24 * 60 * 60 * 1000,
         });
+
         return new Response("", {
           status: 302,
           headers: {
@@ -139,6 +144,9 @@ Deno.serve(async (req) => {
     }
   }
 
+  /* ------------------------------- end logoin ------------------------------- */
+
+  /* ---------------------------- add proxy routes ---------------------------- */
   if (url.pathname === "/routes/add" && req.method === "POST") {
     if (!(await verifySession(req))) {
       return new Response("Unauthorized", { status: 401 });
@@ -147,6 +155,23 @@ Deno.serve(async (req) => {
     const formData = await req.formData();
     const path = formData.get("path") as string;
     const target = formData.get("target") as string;
+
+
+    // add check if target contains SERVER_HOST
+    if (target.includes(SERVER_HOST)) {
+      return new Response(
+          homeTemplate
+            .replace("{{routesRows}}", target)
+            .replace(
+              "</form>",
+              '<div class="error">It is not allowed !</div></form>'
+            ),
+          {
+            status: 400,
+            headers: { "Content-Type": "text/html" },
+          }
+        );
+    }
 
     const result = await kv.get<ProxyRoute[]>(ROUTES_KEY);
     const routes: ProxyRoute[] = result.value || [];
@@ -199,6 +224,8 @@ Deno.serve(async (req) => {
     }
   }
 
+  /* ------------------------------ delete routes ----------------------------- */
+
   if (url.pathname === "/routes/delete" && req.method === "POST") {
     if (!(await verifySession(req))) {
       return new Response("Unauthorized", { status: 401 });
@@ -218,6 +245,8 @@ Deno.serve(async (req) => {
     });
   }
 
+  /* ------------------------------ edit routes ------------------------------ */
+
   if (url.pathname === "/routes/edit" && req.method === "POST") {
     if (!(await verifySession(req))) {
       return new Response("Unauthorized", { status: 401 });
@@ -228,7 +257,6 @@ Deno.serve(async (req) => {
     const newPath = formData.get("path") as string;
     const newTarget = formData.get("target") as string;
 
-    // Get routes first
     const result = await kv.get<ProxyRoute[]>(ROUTES_KEY);
     const routes: ProxyRoute[] = result.value || [];
 
@@ -289,6 +317,7 @@ Deno.serve(async (req) => {
     }
   }
 
+  /* --------------------------------- logout --------------------------------- */
   if (url.pathname === "/logout") {
     const sessionId = getCookie(req, "session");
     if (sessionId) {
@@ -302,6 +331,8 @@ Deno.serve(async (req) => {
       },
     });
   }
+
+  /* ---------------------------- load static files --------------------------- */
 
   if (url.pathname.startsWith("/static/")) {
     try {
@@ -364,7 +395,7 @@ Deno.serve(async (req) => {
         method: req.method,
         headers: newHeaders,
         body: req.body,
-        redirect: "follow",
+        // redirect: "follow",
       });
 
       if (proxyResponse.redirected) {
@@ -373,17 +404,17 @@ Deno.serve(async (req) => {
 
       const responseHeaders = new Headers();
       // 测试
-      for (const [key, value] of proxyResponse.headers.entries()) {
-        if (
-          ![
-            "content-encoding",
-            "content-length",
-            "content-security-policy",
-          ].includes(key.toLowerCase())
-        ) {
-          responseHeaders.set(key, value);
-        }
-      }
+      // for (const [key, value] of proxyResponse.headers.entries()) {
+      //   if (
+      //     ![
+      //       "content-encoding",
+      //       "content-length",
+      //       "content-security-policy",
+      //     ].includes(key.toLowerCase())
+      //   ) {
+      //     responseHeaders.set(key, value);
+      //   }
+      // }
 
       responseHeaders.set("Access-Control-Allow-Origin", "*");
       responseHeaders.set(

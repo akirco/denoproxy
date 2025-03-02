@@ -5,7 +5,8 @@
   },
   "imports": {
     "@std/assert": "jsr:@std/assert@1",
-    "templates": "./templates.ts"
+    "templates": "./templates.ts",
+    "dotenv/load":"jsr:@std/dotenv/load"
   },
   "deploy": {
     "project": "denoproxy",
@@ -15,6 +16,7 @@
     "include": [
       "templates.ts",
       "static/**/*",
+      "main.ts",
       ".env"
     ],
     "entrypoint": "main.ts"

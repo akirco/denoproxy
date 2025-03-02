@@ -12,7 +12,7 @@
 
 - **路由管理**: 通过 Web UI 界面轻松管理代理路由
 - **多路由支持**: 支持配置多个代理路由，每个路由可以指向不同的目标
-- **安全认证**: 内置用户认证系统，保护代理管理界面
+- **安全认证**: 简易的用户名和密码认证
 - **环境变量**: 支持通过环境变量配置用户名、密码等
 
 ## 🚀 快速开始
@@ -39,9 +39,15 @@ deno task dev
 
 有两种方式实现部署
 
-1. 安装deno部署工具 deployctl `deno install -A jsr:@deno/deployctl --global` 项目目录执行 `deployctl deploy
-`
-2. fork本项目，进入deno控制台 https://dash.deno.com/ 进行部署操作
+1. 本地部署
+```bash
+deno install -A jsr:@deno/deployctl --global
+cd denoproxy && deployctl deploy
+```
+2. deno控制台
+
+https://dash.deno.com，链接Github选择项目部署即可
+
 
 ### 4. 使用代理服务器
 
@@ -57,11 +63,13 @@ deno task dev
 例如：
 
 ```bash
-path: /github
+path: /openai
 
-target: https://.github.com
+target: https://api.openai.com
 
-proxy_url: `${host}/github`
+proxy_url: `${host}/openai`
+
+curl https://example.deno.dev/openai xxxx
 ```
 
 
