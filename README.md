@@ -46,8 +46,14 @@ cd denoproxy && deployctl deploy
 ```
 2. deno控制台
 
-https://dash.deno.com，链接Github选择项目部署即可
+https://dash.deno.com
 
+链接Github选择项目部署即可
+```ini
+PROXY_USERNAME=admin
+PROXY_PASSWORD=123456
+SERVER_HOST=https://example.deno.dev  #或者其他绑定好的域名
+```
 
 ### 4. 使用代理服务器
 
