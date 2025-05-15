@@ -412,14 +412,17 @@ Deno.serve(async (req) => {
       responseHeaders.set("Access-Control-Allow-Headers", "*");
 
       // 如果是文本内容，确保设置正确的字符编码
-      const contentType = proxyResponse.headers.get("content-type");
-      if (contentType && contentType.includes("text")) {
-        responseHeaders.set("Content-Type", `${contentType}; charset=utf-8`);
-      } else {
-        responseHeaders.set("Content-Type", contentType || "application/octet-stream");
-      }
+      // const contentType = proxyResponse.headers.get("content-type");
+      // if (contentType && contentType.includes("text")) {
+      //   responseHeaders.set("Content-Type", `${contentType}; charset=utf-8`);
+      // } else {
+      // }
+      responseHeaders.set("Content-Type", "application/json; charset=utf-8");
+      
+      const proxyJSON = await proxyResponse.json();
+      
 
-      return new Response(proxyResponse.body, {
+      return new Response(proxyJSON, {
         status: proxyResponse.status,
         statusText: proxyResponse.statusText,
         headers: responseHeaders,
@@ -431,7 +434,7 @@ Deno.serve(async (req) => {
       return new Response("Failed to proxy request: " + errorMessage, {
         status: 500,
         headers: {
-          "Content-Type": "text/plain",
+          "Content-Type": "application/json",
           "Access-Control-Allow-Origin": "*",
         },
       });
@@ -440,6 +443,6 @@ Deno.serve(async (req) => {
 
   return new Response("Not Found", {
     status: 404,
-    headers: { "Content-Type": "text/plain" },
+    headers: { "Content-Type": "application/json" },
   });
 });
