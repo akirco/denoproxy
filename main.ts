@@ -85,7 +85,6 @@ Deno.serve(async (req) => {
   const url = new URL(req.url);
   SERVER_HOST = url.origin;
 
-
   if (url.pathname === "/" || url.pathname === "") {
     if (!(await verifySession(req))) {
       return new Response("", {
@@ -116,7 +115,6 @@ Deno.serve(async (req) => {
       const username = formData.get("username");
       const password = formData.get("password");
       if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-
         const sessionId = crypto.randomUUID();
 
         await kv.set([...SESSION_KEY, sessionId], true, {
@@ -156,21 +154,20 @@ Deno.serve(async (req) => {
     const path = formData.get("path") as string;
     const target = formData.get("target") as string;
 
-
     // add check if target contains SERVER_HOST
     if (target.includes(SERVER_HOST)) {
       return new Response(
-          homeTemplate
-            .replace("{{routesRows}}", target)
-            .replace(
-              "</form>",
-              '<div class="error">It is not allowed !</div></form>'
-            ),
-          {
-            status: 400,
-            headers: { "Content-Type": "text/html; charset=utf-8" },
-          }
-        );
+        homeTemplate
+          .replace("{{routesRows}}", target)
+          .replace(
+            "</form>",
+            '<div class="error">It is not allowed !</div></form>'
+          ),
+        {
+          status: 400,
+          headers: { "Content-Type": "text/html; charset=utf-8" },
+        }
+      );
     }
 
     const result = await kv.get<ProxyRoute[]>(ROUTES_KEY);
@@ -382,62 +379,95 @@ Deno.serve(async (req) => {
       ).toString();
       console.log("Proxying request to:", finalUrl);
 
+      // Prepare request headers
       const newHeaders = new Headers();
       for (const [key, value] of req.headers.entries()) {
         if (!["host", "origin", "referer"].includes(key.toLowerCase())) {
           newHeaders.set(key, value);
         }
       }
-
       newHeaders.set("Host", new URL(matchingRoute.target).host);
 
-      const proxyResponse = await fetch(finalUrl, {
-        method: req.method,
-        headers: newHeaders,
-        body: req.body,
-        // redirect: "follow",
-      });
+      try {
+        const proxyResponse = await fetch(finalUrl, {
+          method: req.method,
+          headers: newHeaders,
+          body: req.body,
+        });
 
-      if (proxyResponse.redirected) {
-        console.log("Request was redirected to:", proxyResponse.url);
+        if (proxyResponse.redirected) {
+          console.log("Request was redirected to:", proxyResponse.url);
+        }
+
+        // Copy and enhance response headers
+        const responseHeaders = new Headers();
+
+        // Copy original headers that we want to keep
+        const headersToKeep = [
+          "cache-control",
+          "etag",
+          "last-modified",
+          "expires",
+          "vary",
+          "content-encoding",
+        ];
+
+        for (const header of headersToKeep) {
+          const value = proxyResponse.headers.get(header);
+          if (value) {
+            responseHeaders.set(header, value);
+          }
+        }
+
+        // Add CORS headers
+        responseHeaders.set("Access-Control-Allow-Origin", "*");
+        responseHeaders.set(
+          "Access-Control-Allow-Methods",
+          "GET, POST, PUT, DELETE, OPTIONS"
+        );
+        responseHeaders.set("Access-Control-Allow-Headers", "*");
+
+        // Handle content type
+        const contentType = proxyResponse.headers.get("content-type");
+        if (contentType && contentType.includes("text")) {
+          responseHeaders.set("Content-Type", `${contentType}; charset=utf-8`);
+        } else {
+          responseHeaders.set(
+            "Content-Type",
+            contentType || "application/octet-stream"
+          );
+        }
+
+        return new Response(proxyResponse.body, {
+          status: proxyResponse.status,
+          statusText: proxyResponse.statusText,
+          headers: responseHeaders,
+        });
+      } catch (error) {
+        console.error("Proxy error:", error);
+        return new Response(
+          error instanceof Error ? error.message : "Unknown error occurred",
+          {
+            status: error instanceof TypeError ? 502 : 500,
+            headers: {
+              "Content-Type": "text/plain",
+              "Access-Control-Allow-Origin": "*",
+            },
+          }
+        );
       }
-
-      const responseHeaders = new Headers();
-
-      responseHeaders.set("Access-Control-Allow-Origin", "*");
-      responseHeaders.set(
-        "Access-Control-Allow-Methods",
-        "GET, POST, PUT, DELETE, OPTIONS"
-      );
-      responseHeaders.set("Access-Control-Allow-Headers", "*");
-
-      // 如果是文本内容，确保设置正确的字符编码
-      // const contentType = proxyResponse.headers.get("content-type");
-      // if (contentType && contentType.includes("text")) {
-      //   responseHeaders.set("Content-Type", `${contentType}; charset=utf-8`);
-      // } else {
-      // }
-      responseHeaders.set("Content-Type", "application/json; charset=utf-8");
-      
-      const proxyJSON = await proxyResponse.json();
-      
-
-      return new Response(proxyJSON, {
-        status: proxyResponse.status,
-        statusText: proxyResponse.statusText,
-        headers: responseHeaders,
-      });
     } catch (error) {
       console.error("Proxy error:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error occurred";
-      return new Response("Failed to proxy request: " + errorMessage, {
-        status: 500,
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*",
-        },
-      });
+      return new Response(
+        error instanceof Error ? error.message : "Unknown error occurred",
+        {
+          status: error instanceof TypeError ? 502 : 500,
+          headers: {
+            "Content-Type": "text/plain",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
     }
   }
 
